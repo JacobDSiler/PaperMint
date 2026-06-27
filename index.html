@@ -161,6 +161,15 @@ input[type="color"]:focus{border-color:var(--accent)}
 /* ── DIVIDER ── */
 hr.div{border:none;border-top:1px solid var(--border);margin:2px 0}
 
+/* ── TOGGLE SWITCH ── */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0}
+.toggle{position:relative;display:inline-block;width:38px;height:21px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--border2);border-radius:21px;cursor:pointer;transition:background 0.18s}
+.toggle-slider:before{content:'';position:absolute;width:15px;height:15px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform 0.18s}
+.toggle input:checked + .toggle-slider{background:var(--accent)}
+.toggle input:checked + .toggle-slider:before{transform:translateX(17px)}
+
 /* ── TOOLTIP ── */
 [title]{cursor:help}
 </style>
@@ -243,6 +252,18 @@ hr.div{border:none;border-top:1px solid var(--border);margin:2px 0}
           <option value="wide">Wide — 1″ all sides</option>
           <option value="none">None — edge-to-edge</option>
         </select>
+      </div>
+
+      <!-- Full Bleed -->
+      <div class="toggle-row">
+        <div>
+          <div class="form-label" style="margin:0">Full bleed pattern</div>
+          <div style="font-size:0.68rem;color:var(--text3);margin-top:2px">Lines extend to page edge</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="fullBleed">
+          <span class="toggle-slider"></span>
+        </label>
       </div>
 
       <!-- Colors -->
@@ -574,6 +595,15 @@ function getOpts(){
   document.querySelectorAll('[data-opt]').forEach(el=>{ o[el.dataset.opt]=el.value });
   return o; }
 
+// Structural layouts that should always respect margins even in full-bleed mode
+const STRUCTURAL_TYPES=new Set(['cornell','todoList','storyboard','musicStaff','grandStaff','guitarTab','bassTab','ukuleleTab']);
+
+function getEffectiveMargins(){
+  const base=MARGINS[document.getElementById('marginPreset').value]||MARGINS.kdp;
+  const bleed=document.getElementById('fullBleed').checked;
+  if(bleed && !STRUCTURAL_TYPES.has(state.type)) return {L:0,R:0,T:0,B:0};
+  return base; }
+
 function getSize(){
   const k=document.getElementById('bookSize').value;
   if(k==='custom') return [
@@ -673,19 +703,20 @@ function renderPage(ctx, type, W, H, M, opts){
     /* ─── HEX GRID ─── */
     case 'hexGrid':{
       const r=parseFloat(opts.hexR)||6;
-      const hh=r*Math.sqrt(3);
+      // Pointy-top hex: col spacing = r*√3, row spacing = r*1.5, row offset = col/2
+      const colSp=r*Math.sqrt(3);
+      const rowSp=r*1.5;
       ctx.setLineWidth(0.2);
       let row=0;
-      for(let cy=T+r; cy<B+r; cy+=hh){
-        const xOff=(row%2)*r*1.5;
-        for(let cx=L+r+xOff; cx<R+r; cx+=r*3){
+      // Start one row above T so edges fill cleanly from the top margin
+      for(let cy=T-rowSp*0.5; cy<=B+rowSp; cy+=rowSp){
+        const xOff=(row%2)*colSp*0.5;
+        for(let cx=L+xOff-colSp; cx<=R+colSp; cx+=colSp){
+          // Draw all 6 edges; canvas/PDF clips naturally at content bounds
           for(let i=0;i<6;i++){
-            const a1=(Math.PI/3)*i-Math.PI/6, a2=(Math.PI/3)*(i+1)-Math.PI/6;
-            const x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
-            const x2=cx+r*Math.cos(a2), y2=cy+r*Math.sin(a2);
-            if(x1>=L-1&&x1<=R+1&&x2>=L-1&&x2<=R+1&&
-               y1>=T-1&&y1<=B+1&&y2>=T-1&&y2<=B+1)
-              ctx.line(x1,y1,x2,y2);
+            const a1=Math.PI/3*i-Math.PI/6, a2=Math.PI/3*(i+1)-Math.PI/6;
+            ctx.line(cx+r*Math.cos(a1),cy+r*Math.sin(a1),
+                     cx+r*Math.cos(a2),cy+r*Math.sin(a2));
           }
         }
         row++;
@@ -996,7 +1027,7 @@ function updatePreview(){
   }
 
   const ctx=new CanvasCtx(canvas,W,H);
-  const M=MARGINS[document.getElementById('marginPreset').value]||MARGINS.kdp;
+  const M=getEffectiveMargins();
   renderPage(ctx,state.type,W,H,M,getOpts());
 }
 
@@ -1064,7 +1095,7 @@ cz.addEventListener('drop',e=>{
 });
 
 // Generic change listeners
-['bookSize','marginPreset','lineColor','bgColor','pageCount'].forEach(id=>{
+['bookSize','marginPreset','lineColor','bgColor','pageCount','fullBleed'].forEach(id=>{
   document.getElementById(id).addEventListener('input',updatePreview);
   document.getElementById(id).addEventListener('change',updatePreview);
 });
@@ -1081,7 +1112,7 @@ document.getElementById('bookSize').addEventListener('change',e=>{
 ═══════════════════════════════════════ */
 async function exportPDF(){
   const [W,H]=getSize();
-  const M=MARGINS[document.getElementById('marginPreset').value]||MARGINS.kdp;
+  const M=getEffectiveMargins();
   const opts=getOpts();
   const pages=parseInt(document.getElementById('pageCount').value)||1;
   const exportBtn=document.getElementById('exportBtn');
