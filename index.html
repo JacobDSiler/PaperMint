@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperMint — No-Content Book Creator</title>
+<meta name="description" content="PaperMint: create print-ready filler pages for no-content books — lined, graph, music staves, guitar tab, dot grid, and more. Free, browser-based, KDP ready.">
+<meta property="og:title" content="PaperMint — No-Content Book Creator">
+<meta property="og:description" content="Generate lined, graph, dot grid, music notation, guitar tab pages and more. Export KDP print-ready PDFs instantly.">
+<meta name="theme-color" content="#3ecf8e">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0d0d14;
+  --surface: #16161f;
+  --surface2: #1e1e2a;
+  --surface3: #252535;
+  --accent: #3ecf8e;
+  --accent2: #6ee7b7;
+  --accent-glow: rgba(62,207,142,0.15);
+  --text: #e8e8f0;
+  --text2: #8888a8;
+  --text3: #5a5a7a;
+  --border: #2a2a3e;
+  --border2: #333348;
+  --success: #4ccea0;
+  --warn: #f7a144;
+  --red: #f76f6f;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+
+/* ── HEADER ── */
+header{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:10px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+  z-index:10;
+}
+.logo{font-size:1.4rem;font-weight:900;letter-spacing:-1px;
+  background:linear-gradient(135deg,#6ee7b7,#3ecf8e,#38bdf8);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tagline{font-size:0.72rem;color:var(--text3);margin-top:1px}
+.header-badges{display:flex;gap:8px}
+.badge{font-size:0.68rem;padding:3px 8px;border-radius:20px;font-weight:600;letter-spacing:0.3px}
+.badge-kdp{background:rgba(76,206,160,0.12);color:var(--success);border:1px solid rgba(76,206,160,0.25)}
+.badge-free{background:rgba(124,111,247,0.12);color:var(--accent2);border:1px solid rgba(124,111,247,0.25)}
+
+/* ── LAYOUT ── */
+.app{display:flex;flex:1;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:310px;min-width:310px;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.sidebar-scroll{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.sidebar-scroll::-webkit-scrollbar{width:4px}
+.sidebar-scroll::-webkit-scrollbar-track{background:transparent}
+.sidebar-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px;flex-shrink:0}
+
+.sec-label{font-size:0.65rem;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+
+/* ── FORM CONTROLS ── */
+select,input[type="number"],input[type="text"]{
+  width:100%;background:var(--surface2);border:1px solid var(--border2);
+  color:var(--text);padding:7px 10px;border-radius:7px;
+  font-size:0.83rem;outline:none;transition:border-color 0.15s;
+  -webkit-appearance:none;appearance:none;
+}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238888a8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+select:focus,input[type="number"]:focus,input[type="text"]:focus{border-color:var(--accent)}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-label{font-size:0.78rem;color:var(--text2)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+input[type="color"]{width:100%;height:34px;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;cursor:pointer;padding:3px 6px;outline:none}
+input[type="color"]:focus{border-color:var(--accent)}
+
+/* ── PAGE TYPE GRID ── */
+.pt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.pt-btn{
+  background:var(--surface2);border:1.5px solid var(--border2);
+  border-radius:8px;padding:7px 3px 5px;cursor:pointer;
+  text-align:center;transition:all 0.12s;color:var(--text3);font-size:0.62rem;
+  line-height:1.3;
+}
+.pt-btn .ico{font-size:1.15rem;display:block;margin-bottom:2px}
+.pt-btn:hover{border-color:var(--accent);color:var(--text2)}
+.pt-btn.active{border-color:var(--accent);background:var(--accent-glow);color:var(--accent2)}
+
+/* ── TYPE OPTIONS ── */
+.type-opts{display:flex;flex-direction:column;gap:8px}
+
+/* ── COVER UPLOAD ── */
+.cover-zone{
+  border:2px dashed var(--border2);border-radius:9px;
+  padding:14px;text-align:center;cursor:pointer;
+  transition:border-color 0.15s,background 0.15s;
+  color:var(--text3);font-size:0.78rem;line-height:1.6;
+}
+.cover-zone:hover{border-color:var(--accent);background:var(--accent-glow)}
+.cover-zone.has-cover{border-style:solid;border-color:var(--success)}
+#coverPreviewImg{max-width:100%;max-height:100px;border-radius:5px;display:none}
+.cover-actions{display:flex;gap:6px;margin-top:6px;display:none}
+.btn-sm{background:none;border:1px solid var(--border2);color:var(--text2);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:0.73rem;transition:border-color 0.12s}
+.btn-sm:hover{border-color:var(--accent);color:var(--text)}
+
+/* ── KDP INFO ── */
+.kdp-box{background:rgba(76,206,160,0.07);border:1px solid rgba(76,206,160,0.2);border-radius:8px;padding:9px 11px;font-size:0.73rem;color:rgba(76,206,160,0.9);line-height:1.55}
+.kdp-box strong{color:var(--success)}
+
+/* ── PROGRESS ── */
+.progress-wrap{display:none;flex-direction:column;gap:5px}
+.progress-bar{height:3px;background:var(--border2);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0;transition:width 0.08s;border-radius:2px}
+.progress-text{font-size:0.72rem;color:var(--text2)}
+
+/* ── EXPORT BUTTON ── */
+.btn-export{
+  background:linear-gradient(135deg,#2db87d,#3ecf8e);
+  border:none;color:#fff;padding:12px;border-radius:9px;
+  font-size:0.92rem;font-weight:700;cursor:pointer;width:100%;
+  letter-spacing:0.2px;transition:opacity 0.15s,transform 0.1s;
+  box-shadow:0 4px 20px rgba(62,207,142,0.3);
+}
+.btn-export:hover{opacity:0.9}
+.btn-export:active{transform:scale(0.98)}
+.btn-export:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+/* ── PREVIEW ── */
+.preview-area{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at center, #13131e 0%, #0a0a10 100%);
+  gap:14px;padding:20px;overflow:auto;position:relative;
+}
+.preview-label{font-size:0.65rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3)}
+#previewCanvas{
+  border-radius:3px;
+  box-shadow:0 12px 60px rgba(0,0,0,0.7),0 0 0 1px rgba(255,255,255,0.04);
+  max-width:100%;max-height:calc(100vh - 200px);
+  image-rendering:crisp-edges;
+}
+.preview-nav{display:flex;gap:10px;align-items:center}
+.nav-btn{background:var(--surface);border:1px solid var(--border2);color:var(--text2);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:0.8rem;transition:border-color 0.12s}
+.nav-btn:hover{border-color:var(--accent);color:var(--text)}
+.nav-info{font-size:0.78rem;color:var(--text2);min-width:90px;text-align:center}
+
+/* ── CUSTOM SIZE ROW ── */
+.custom-size-row{display:none;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center}
+.custom-size-row.show{display:grid}
+.custom-size-row span{text-align:center;color:var(--text3);font-size:0.8rem}
+
+/* ── DIVIDER ── */
+hr.div{border:none;border-top:1px solid var(--border);margin:2px 0}
+
+/* ── TOOLTIP ── */
+[title]{cursor:help}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">PaperMint</div>
+    <div class="tagline">No-content book creator · KDP print-ready PDF</div>
+  </div>
+  <div class="header-badges">
+    <span class="badge badge-kdp">✓ KDP Ready</span>
+    <span class="badge badge-free">Free &amp; Local</span>
+  </div>
+</header>
+
+<div class="app">
+  <!-- ═══════ SIDEBAR ═══════ -->
+  <div class="sidebar">
+    <div class="sidebar-scroll">
+
+      <!-- Book Size -->
+      <div>
+        <div class="sec-label">Book Size</div>
+        <div class="form-group">
+          <select id="bookSize">
+            <optgroup label="KDP Popular">
+              <option value="6x9" selected>6″ × 9″ — #1 KDP seller</option>
+              <option value="5x8">5″ × 8″</option>
+              <option value="5.5x8.5">5.5″ × 8.5″</option>
+              <option value="7x10">7″ × 10″</option>
+              <option value="8x10">8″ × 10″</option>
+              <option value="8.5x11">8.5″ × 11″ (US Letter)</option>
+            </optgroup>
+            <optgroup label="International">
+              <option value="a4">A4 — 210 × 297 mm</option>
+              <option value="a5">A5 — 148 × 210 mm</option>
+              <option value="b5">B5 — 176 × 250 mm</option>
+            </optgroup>
+            <optgroup label="Square">
+              <option value="sq5">5″ × 5″ Square</option>
+              <option value="sq6">6″ × 6″ Square</option>
+              <option value="sq8">8″ × 8″ Square</option>
+            </optgroup>
+            <option value="custom">✏ Custom size…</option>
+          </select>
+        </div>
+        <div class="custom-size-row" id="customSizeRow">
+          <div class="form-group"><label class="form-label">Width (mm)</label><input type="number" id="customW" value="152" min="50" max="300"></div>
+          <span>×</span>
+          <div class="form-group"><label class="form-label">Height (mm)</label><input type="number" id="customH" value="229" min="50" max="500"></div>
+        </div>
+      </div>
+
+      <!-- Page Type -->
+      <div>
+        <div class="sec-label">Page Type</div>
+        <div class="pt-grid" id="ptGrid"></div>
+      </div>
+
+      <!-- Type Options -->
+      <div class="type-opts" id="typeOpts"></div>
+
+      <hr class="div">
+
+      <!-- Page Count -->
+      <div class="form-group">
+        <label class="form-label">Number of Interior Pages</label>
+        <input type="number" id="pageCount" value="100" min="1" max="800">
+      </div>
+
+      <!-- Margins -->
+      <div class="form-group">
+        <label class="form-label">Margin Preset</label>
+        <select id="marginPreset">
+          <option value="kdp">KDP Standard (0.5″ gutter · 0.375″ outer)</option>
+          <option value="normal">Normal — 0.5″ all sides</option>
+          <option value="narrow">Narrow — 0.25″ all sides</option>
+          <option value="wide">Wide — 1″ all sides</option>
+          <option value="none">None — edge-to-edge</option>
+        </select>
+      </div>
+
+      <!-- Colors -->
+      <div>
+        <div class="sec-label">Colors</div>
+        <div class="two-col">
+          <div class="form-group"><label class="form-label">Line / ink color</label><input type="color" id="lineColor" value="#b8b8d0"></div>
+          <div class="form-group"><label class="form-label">Page background</label><input type="color" id="bgColor" value="#ffffff"></div>
+        </div>
+      </div>
+
+      <!-- Cover -->
+      <div>
+        <div class="sec-label">Front Cover (optional)</div>
+        <div class="cover-zone" id="coverZone" onclick="document.getElementById('coverInput').click()">
+          <div id="coverPlaceholder">📎 Click or drop your cover image<br><small>PNG or JPG · scaled to fit page 1</small></div>
+          <img id="coverPreviewImg">
+        </div>
+        <div class="cover-actions" id="coverActions">
+          <button class="btn-sm" onclick="clearCover()">✕ Remove</button>
+          <button class="btn-sm" onclick="document.getElementById('coverInput').click()">↻ Replace</button>
+        </div>
+        <input type="file" id="coverInput" accept="image/*" style="display:none">
+      </div>
+
+      <div class="kdp-box">
+        <strong>✅ KDP Interior Tips</strong><br>
+        • Use <em>KDP Standard</em> margins — inner gutter prevents text cutoff.<br>
+        • Keep pages at 100–800 for KDP paperback.<br>
+        • Upload your cover <strong>separately</strong> on KDP (this tool includes it as page 1 for preview only).
+      </div>
+
+    </div><!-- /sidebar-scroll -->
+
+    <div class="sidebar-footer">
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-text" id="progressText">Generating PDF…</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+      <button class="btn-export" id="exportBtn" onclick="exportPDF()">⬇&ensp;Export Print-Ready PDF</button>
+    </div>
+  </div><!-- /sidebar -->
+
+  <!-- ═══════ PREVIEW ═══════ -->
+  <div class="preview-area">
+    <div class="preview-label">Live Preview</div>
+    <canvas id="previewCanvas"></canvas>
+    <div class="preview-nav">
+      <button class="nav-btn" onclick="navPage(-1)">← Prev</button>
+      <span class="nav-info" id="navInfo">Page 1</span>
+      <button class="nav-btn" onclick="navPage(1)">Next →</button>
+    </div>
+  </div>
+</div><!-- /app -->
+
+<script>
+'use strict';
+const { jsPDF } = window.jspdf;
+
+/* ═══════════════════════════════════════
+   DATA
+═══════════════════════════════════════ */
+const SIZES = {
+  '6x9':    [152.4, 228.6], '5x8':    [127, 203.2],
+  '5.5x8.5':[139.7,215.9],  '7x10':   [177.8,254],
+  '8x10':   [203.2,254],    '8.5x11': [215.9,279.4],
+  'a4':     [210, 297],     'a5':     [148, 210],
+  'b5':     [176, 250],
+  'sq5':    [127,127],      'sq6':    [152.4,152.4],
+  'sq8':    [203.2,203.2],
+};
+
+const MARGINS = {
+  kdp:    {L:12.7, R:9.525, T:9.525, B:9.525},
+  normal: {L:12.7, R:12.7,  T:12.7,  B:12.7},
+  narrow: {L:6.35, R:6.35,  T:6.35,  B:6.35},
+  wide:   {L:25.4, R:25.4,  T:25.4,  B:25.4},
+  none:   {L:0,    R:0,     T:0,     B:0},
+};
+
+const PAGE_TYPES = [
+  {id:'blank',      ico:'⬜', label:'Blank'},
+  {id:'lined',      ico:'📝', label:'Lined'},
+  {id:'graph',      ico:'📊', label:'Graph'},
+  {id:'dotGrid',    ico:'∷',  label:'Dot Grid'},
+  {id:'isometric',  ico:'◈',  label:'Isometric'},
+  {id:'hexGrid',    ico:'⬡',  label:'Hex Grid'},
+  {id:'cornell',    ico:'📋', label:'Cornell'},
+  {id:'todoList',   ico:'☑',  label:'To-Do'},
+  {id:'storyboard', ico:'🎬', label:'Storyboard'},
+  {id:'calligraphy',ico:'✒',  label:'Calligraphy'},
+  {id:'handwriting',ico:'✏',  label:'Handwriting'},
+  {id:'musicStaff', ico:'♩',  label:'Music Staff'},
+  {id:'grandStaff', ico:'🎼', label:'Grand Staff'},
+  {id:'guitarTab',  ico:'🎸', label:'Guitar Tab'},
+  {id:'bassTab',    ico:'🎵', label:'Bass Tab'},
+  {id:'ukuleleTab', ico:'🏝', label:'Uke Tab'},
+];
+
+const TYPE_OPTS_HTML = {
+  lined: `
+    <div class="form-group"><label class="form-label">Ruling</label>
+    <select data-opt="ruling">
+      <option value="college">College ruled — 7.1 mm</option>
+      <option value="wide">Wide ruled — 8.7 mm</option>
+      <option value="narrow">Narrow ruled — 6 mm</option>
+      <option value="gregg">Gregg ruled — 11 / 8 mm</option>
+    </select></div>
+    <div class="form-group"><label class="form-label">Margin line</label>
+    <select data-opt="marginLine">
+      <option value="yes">Red margin line</option>
+      <option value="no">No margin line</option>
+    </select></div>`,
+  graph: `
+    <div class="form-group"><label class="form-label">Grid spacing</label>
+    <select data-opt="gridSize">
+      <option value="5">5 mm — standard</option>
+      <option value="3">3 mm — small</option>
+      <option value="6">6 mm — large</option>
+      <option value="10">10 mm — 1 cm</option>
+      <option value="2.5">2.5 mm — fine</option>
+    </select></div>
+    <div class="form-group"><label class="form-label">Bold major lines</label>
+    <select data-opt="majorGrid">
+      <option value="5">Every 5 squares</option>
+      <option value="10">Every 10 squares</option>
+      <option value="0">None</option>
+    </select></div>`,
+  dotGrid: `
+    <div class="form-group"><label class="form-label">Dot spacing</label>
+    <select data-opt="dotSpacing">
+      <option value="5">5 mm — standard</option>
+      <option value="4">4 mm — tight</option>
+      <option value="6">6 mm — airy</option>
+      <option value="3.5">3.5 mm — fine</option>
+    </select></div>
+    <div class="form-group"><label class="form-label">Dot size</label>
+    <select data-opt="dotSize">
+      <option value="0.45">Small</option>
+      <option value="0.65">Medium</option>
+      <option value="0.85">Large</option>
+    </select></div>`,
+  isometric: `
+    <div class="form-group"><label class="form-label">Triangle size</label>
+    <select data-opt="isoSize">
+      <option value="6">6 mm — standard</option>
+      <option value="4">4 mm — small</option>
+      <option value="8">8 mm — large</option>
+      <option value="10">10 mm — extra large</option>
+    </select></div>`,
+  hexGrid: `
+    <div class="form-group"><label class="form-label">Hex radius</label>
+    <select data-opt="hexR">
+      <option value="6">6 mm — standard</option>
+      <option value="4">4 mm — small</option>
+      <option value="8">8 mm — large</option>
+      <option value="10">10 mm — extra large</option>
+    </select></div>`,
+  cornell: `
+    <div class="form-group"><label class="form-label">Cue column width</label>
+    <select data-opt="cueWidth">
+      <option value="30">30 % — standard</option>
+      <option value="22">22 % — narrow</option>
+      <option value="38">38 % — wide</option>
+    </select></div>
+    <div class="form-group"><label class="form-label">Summary section height</label>
+    <select data-opt="summaryH">
+      <option value="20">20 % — standard</option>
+      <option value="15">15 % — small</option>
+      <option value="25">25 % — large</option>
+    </select></div>`,
+  todoList: `
+    <div class="form-group"><label class="form-label">Line spacing</label>
+    <select data-opt="todoSpacing">
+      <option value="9">9 mm — standard</option>
+      <option value="7">7 mm — compact</option>
+      <option value="12">12 mm — roomy</option>
+    </select></div>
+    <div class="form-group"><label class="form-label">Checkbox style</label>
+    <select data-opt="checkStyle">
+      <option value="square">Square</option>
+      <option value="round">Round</option>
+    </select></div>`,
+  storyboard: `
+    <div class="form-group"><label class="form-label">Panel layout</label>
+    <select data-opt="panels">
+      <option value="2x3">2 × 3 — 6 panels</option>
+      <option value="2x2">2 × 2 — 4 panels</option>
+      <option value="3x3">3 × 3 — 9 panels</option>
+      <option value="1x3">1 × 3 — 3 wide panels</option>
+      <option value="1x4">1 × 4 — 4 tall panels</option>
+    </select></div>`,
+  calligraphy: `
+    <div class="form-group"><label class="form-label">Style</label>
+    <select data-opt="calStyle">
+      <option value="copperplate">Copperplate (52° slant)</option>
+      <option value="italic">Italic (80° slant)</option>
+      <option value="spencerian">Spencerian (52° slant, oval)</option>
+    </select></div>
+    <div class="form-group"><label class="form-label">Set height</label>
+    <select data-opt="calHeight">
+      <option value="14">14 mm — standard</option>
+      <option value="10">10 mm — small</option>
+      <option value="18">18 mm — large</option>
+    </select></div>`,
+  handwriting: `
+    <div class="form-group"><label class="form-label">Style</label>
+    <select data-opt="hwStyle">
+      <option value="zaner">Zaner-Bloser (4 lines)</option>
+      <option value="dotted">Dotted midline</option>
+      <option value="simple">Simple 2-line</option>
+    </select></div>
+    <div class="form-group"><label class="form-label">Set height</label>
+    <select data-opt="hwHeight">
+      <option value="15">15 mm — standard</option>
+      <option value="10">10 mm — small</option>
+      <option value="20">20 mm — large (early learner)</option>
+    </select></div>`,
+  musicStaff: `
+    <div class="form-group"><label class="form-label">Staves per page</label>
+    <select data-opt="staves">
+      <option value="8">8 staves</option>
+      <option value="6">6 staves — large</option>
+      <option value="10">10 staves</option>
+      <option value="12">12 staves — compact</option>
+    </select></div>`,
+  grandStaff: `
+    <div class="form-group"><label class="form-label">Systems per page</label>
+    <select data-opt="systems">
+      <option value="4">4 systems</option>
+      <option value="3">3 systems — spacious</option>
+      <option value="5">5 systems</option>
+      <option value="6">6 systems — compact</option>
+    </select></div>`,
+  guitarTab: `
+    <div class="form-group"><label class="form-label">Systems per page</label>
+    <select data-opt="systems">
+      <option value="4">4 systems</option>
+      <option value="3">3 systems — spacious</option>
+      <option value="5">5 systems</option>
+      <option value="6">6 systems — compact</option>
+    </select></div>
+    <div class="form-group"><label class="form-label">Include notation staff</label>
+    <select data-opt="withStaff">
+      <option value="no">Tab only</option>
+      <option value="yes">Notation staff + Tab</option>
+    </select></div>`,
+  bassTab: `
+    <div class="form-group"><label class="form-label">Systems per page</label>
+    <select data-opt="systems">
+      <option value="5">5 systems</option>
+      <option value="4">4 systems</option>
+      <option value="6">6 systems</option>
+    </select></div>`,
+  ukuleleTab: `
+    <div class="form-group"><label class="form-label">Systems per page</label>
+    <select data-opt="systems">
+      <option value="5">5 systems</option>
+      <option value="4">4 systems</option>
+      <option value="6">6 systems</option>
+    </select></div>`,
+};
+
+/* ═══════════════════════════════════════
+   ABSTRACT DRAWING CONTEXTS
+═══════════════════════════════════════ */
+class CanvasCtx {
+  constructor(canvas, W, H) {
+    this.c = canvas.getContext('2d');
+    this.W = W; this.H = H;
+    this.sc = canvas.width / W;
+    this._r=0;this._g=0;this._b=0;
+  }
+  sc_(v){ return v * this.sc }
+  setColor(r,g,b){ this._r=r;this._g=g;this._b=b;
+    const s=`rgb(${r},${g},${b})`;
+    this.c.strokeStyle=s;this.c.fillStyle=s; }
+  setLineWidth(w){ this.c.lineWidth = w * this.sc }
+  setDash(arr){ this.c.setLineDash(arr.map(v=>v*this.sc)) }
+  line(x1,y1,x2,y2){
+    const s=this.sc,c=this.c;
+    c.beginPath();c.moveTo(x1*s,y1*s);c.lineTo(x2*s,y2*s);c.stroke(); }
+  rect(x,y,w,h,fill=false){
+    const s=this.sc,c=this.c;
+    if(fill)c.fillRect(x*s,y*s,w*s,h*s);
+    else c.strokeRect(x*s,y*s,w*s,h*s); }
+  fillBg(hex){
+    const [r,g,b]=hexRgb(hex);
+    this.c.fillStyle=`rgb(${r},${g},${b})`;
+    this.c.fillRect(0,0,this.W*this.sc,this.H*this.sc);
+    this.c.fillStyle=`rgb(${this._r},${this._g},${this._b})`; }
+  circle(cx,cy,r,fill=false){
+    const s=this.sc,c=this.c;
+    c.beginPath();c.arc(cx*s,cy*s,r*s,0,Math.PI*2);
+    if(fill)c.fill();else c.stroke(); }
+  text(str,x,y,sizeMm){
+    const s=this.sc,c=this.c;
+    c.font=`${sizeMm*s}px sans-serif`;
+    c.fillStyle=`rgb(${this._r},${this._g},${this._b})`;
+    c.fillText(str,x*s,y*s); }
+}
+
+class PDFCtx {
+  constructor(doc){ this.d=doc }
+  setColor(r,g,b){ this.d.setDrawColor(r,g,b);this.d.setFillColor(r,g,b);this.d.setTextColor(r,g,b) }
+  setLineWidth(w){ this.d.setLineWidth(w) }
+  setDash(){ /* skip in PDF */ }
+  line(x1,y1,x2,y2){ this.d.line(x1,y1,x2,y2) }
+  rect(x,y,w,h,fill=false){ this.d.rect(x,y,w,h,fill?'F':'S') }
+  fillBg(hex){
+    const [r,g,b]=hexRgb(hex);
+    this.d.setFillColor(r,g,b);
+    this.d.rect(0,0,this.d.internal.pageSize.getWidth(),this.d.internal.pageSize.getHeight(),'F'); }
+  circle(cx,cy,r,fill=false){ this.d.circle(cx,cy,r,fill?'F':'S') }
+  text(str,x,y,sizeMm){
+    this.d.setFontSize(sizeMm*2.8346);
+    this.d.text(str,x,y); }
+}
+
+/* ═══════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════ */
+function hexRgb(hex){
+  const v=parseInt(hex.slice(1),16);
+  return [(v>>16)&255,(v>>8)&255,v&255]; }
+
+function getOpts(){
+  const o={};
+  document.querySelectorAll('[data-opt]').forEach(el=>{ o[el.dataset.opt]=el.value });
+  return o; }
+
+function getSize(){
+  const k=document.getElementById('bookSize').value;
+  if(k==='custom') return [
+    parseFloat(document.getElementById('customW').value)||152,
+    parseFloat(document.getElementById('customH').value)||229
+  ];
+  return SIZES[k]||[152.4,228.6]; }
+
+/* ═══════════════════════════════════════
+   PAGE RENDERERS
+═══════════════════════════════════════ */
+function renderPage(ctx, type, W, H, M, opts){
+  const lc = hexRgb(document.getElementById('lineColor').value);
+  const bg = document.getElementById('bgColor').value;
+  ctx.fillBg(bg);
+  ctx.setColor(...lc);
+
+  const L=M.L, R=W-M.R, T=M.T, B=H-M.B;
+  const cw=R-L, ch=B-T;
+
+  switch(type){
+    /* ─── BLANK ─── */
+    case 'blank': break;
+
+    /* ─── LINED ─── */
+    case 'lined':{
+      const sp = opts.ruling==='wide'?8.7:opts.ruling==='narrow'?6:opts.ruling==='gregg'?11:7.1;
+      const sp2 = opts.ruling==='gregg'?8:sp;
+      ctx.setLineWidth(0.2);
+      let y=T+sp, tog=false;
+      while(y<=B+0.01){
+        ctx.line(L,y,R,y);
+        y+= opts.ruling==='gregg'?(tog?sp2:sp)*(tog=!tog,1):sp;
+      }
+      if(opts.marginLine!=='no'){
+        ctx.setColor(210,80,80); ctx.setLineWidth(0.3);
+        const mx=L+Math.min(18,cw*0.14);
+        ctx.line(mx,T,mx,B);
+        ctx.setColor(...lc);
+      }
+      break;
+    }
+
+    /* ─── GRAPH ─── */
+    case 'graph':{
+      const s=parseFloat(opts.gridSize)||5;
+      const maj=parseInt(opts.majorGrid)||0;
+      ctx.setLineWidth(0.12); ctx.setColor(...lc);
+      for(let x=L;x<=R+.01;x+=s) ctx.line(x,T,x,B);
+      for(let y=T;y<=B+.01;y+=s) ctx.line(L,y,R,y);
+      if(maj>0){
+        const ms=s*maj;
+        ctx.setLineWidth(0.35);
+        for(let x=L;x<=R+.01;x+=ms) ctx.line(x,T,x,B);
+        for(let y=T;y<=B+.01;y+=ms) ctx.line(L,y,R,y);
+      }
+      break;
+    }
+
+    /* ─── DOT GRID ─── */
+    case 'dotGrid':{
+      const sp=parseFloat(opts.dotSpacing)||5;
+      const r=parseFloat(opts.dotSize)||0.45;
+      for(let x=L;x<=R+.01;x+=sp)
+        for(let y=T;y<=B+.01;y+=sp)
+          ctx.circle(x,y,r,true);
+      break;
+    }
+
+    /* ─── ISOMETRIC ─── */
+    case 'isometric':{
+      const s=parseFloat(opts.isoSize)||6;
+      const sh=s*Math.sqrt(3)/2; // row height
+      const slope=Math.sqrt(3);  // tan(60°)
+      ctx.setLineWidth(0.15);
+      // Horizontal lines
+      for(let y=T;y<=B+.01;y+=sh) ctx.line(L,y,R,y);
+      // 60° lines (down-right)
+      // y = slope*x + c; perpendicular step → Δc = s*sqrt(3)
+      const dc=s*Math.sqrt(3);
+      const cMin=T-slope*R, cMax=B-slope*L;
+      for(let c=cMin;c<=cMax+.01;c+=dc){
+        const xT=(T-c)/slope, xB=(B-c)/slope;
+        const x1=Math.max(L,Math.min(xT,xB)), x2=Math.min(R,Math.max(xT,xB));
+        if(x1<x2) ctx.line(x1,slope*x1+c, x2,slope*x2+c);
+      }
+      // 120° lines (down-left): y = -slope*x + c
+      const cMin2=T+slope*L, cMax2=B+slope*R;
+      for(let c=cMin2;c<=cMax2+.01;c+=dc){
+        const xT=(c-T)/slope, xB=(c-B)/slope;
+        const x1=Math.max(L,Math.min(xT,xB)), x2=Math.min(R,Math.max(xT,xB));
+        if(x1<x2) ctx.line(x1,-slope*x1+c, x2,-slope*x2+c);
+      }
+      break;
+    }
+
+    /* ─── HEX GRID ─── */
+    case 'hexGrid':{
+      const r=parseFloat(opts.hexR)||6;
+      const hh=r*Math.sqrt(3);
+      ctx.setLineWidth(0.2);
+      let row=0;
+      for(let cy=T+r; cy<B+r; cy+=hh){
+        const xOff=(row%2)*r*1.5;
+        for(let cx=L+r+xOff; cx<R+r; cx+=r*3){
+          for(let i=0;i<6;i++){
+            const a1=(Math.PI/3)*i-Math.PI/6, a2=(Math.PI/3)*(i+1)-Math.PI/6;
+            const x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+            const x2=cx+r*Math.cos(a2), y2=cy+r*Math.sin(a2);
+            if(x1>=L-1&&x1<=R+1&&x2>=L-1&&x2<=R+1&&
+               y1>=T-1&&y1<=B+1&&y2>=T-1&&y2<=B+1)
+              ctx.line(x1,y1,x2,y2);
+          }
+        }
+        row++;
+      }
+      break;
+    }
+
+    /* ─── CORNELL NOTES ─── */
+    case 'cornell':{
+      const cuePct=parseFloat(opts.cueWidth)||30;
+      const sumPct=parseFloat(opts.summaryH)||20;
+      const cueX=L+cw*(cuePct/100);
+      const sumY=B-ch*(sumPct/100);
+      const ls=7.1;
+      ctx.setLineWidth(0.25);
+      // Column and summary dividers
+      ctx.setColor(180,100,100); ctx.setLineWidth(0.4);
+      ctx.line(cueX,T,cueX,sumY);
+      ctx.line(L,sumY,R,sumY);
+      ctx.setColor(...lc); ctx.setLineWidth(0.18);
+      // Note area lines
+      for(let y=T+ls;y<sumY-1;y+=ls) ctx.line(cueX+2,y,R,y);
+      // Cue area lines
+      for(let y=T+ls;y<sumY-1;y+=ls) ctx.line(L,y,cueX-2,y);
+      // Summary area lines
+      for(let y=sumY+ls;y<B-1;y+=ls) ctx.line(L,y,R,y);
+      // Labels
+      ctx.setColor(180,170,200);
+      ctx.text('CUE / QUESTIONS',L+2,T+4,4.2);
+      ctx.text('NOTES',cueX+3,T+4,4.2);
+      ctx.text('SUMMARY',L+2,sumY+4,4.2);
+      break;
+    }
+
+    /* ─── TO-DO LIST ─── */
+    case 'todoList':{
+      const sp=parseFloat(opts.todoSpacing)||9;
+      const cs=3.2;
+      const round=opts.checkStyle==='round';
+      ctx.setLineWidth(0.25);
+      for(let y=T+sp;y<=B-1;y+=sp){
+        if(round) ctx.circle(L+cs/2+1.5, y-cs/2+0.5, cs/2, false);
+        else ctx.rect(L+1.5, y-cs+0.5, cs, cs, false);
+        ctx.setLineWidth(0.18);
+        ctx.line(L+cs+4.5, y, R, y);
+        ctx.setLineWidth(0.25);
+      }
+      break;
+    }
+
+    /* ─── STORYBOARD ─── */
+    case 'storyboard':{
+      const layout=opts.panels||'2x3';
+      const [cols,rows]=layout.split('x').map(Number);
+      const gap=3, noteLines=2, noteH=6;
+      const panelAreaH=ch*0.72;
+      const notesH=noteLines*noteH;
+      const blockH=(panelAreaH-(rows-1)*gap)/rows;
+      const blockW=(cw-(cols-1)*gap)/cols;
+      ctx.setLineWidth(0.25);
+      for(let r=0;r<rows;r++){
+        for(let c=0;c<cols;c++){
+          const px=L+c*(blockW+gap);
+          const py=T+r*(blockH+gap+notesH+2);
+          const panH=blockH;
+          ctx.rect(px,py,blockW,panH,false);
+          // note lines under panel
+          ctx.setLineWidth(0.15);
+          for(let n=0;n<noteLines;n++){
+            const ny=py+panH+3+(n+1)*noteH;
+            ctx.line(px,ny,px+blockW,ny);
+          }
+          ctx.setLineWidth(0.25);
+        }
+      }
+      break;
+    }
+
+    /* ─── CALLIGRAPHY ─── */
+    case 'calligraphy':{
+      const totalH=parseFloat(opts.calHeight)||14;
+      const ascH=totalH*0.4, xhH=totalH*0.4, descH=totalH*0.2;
+      const slantDeg=opts.calStyle==='italic'?80:52;
+      const slantRad=slantDeg*Math.PI/180;
+      const rowGap=6;
+      ctx.setLineWidth(0.1);
+      let y=T+ascH+xhH;
+      while(y+descH<=B+1){
+        const baseline=y, xHeight=y-xhH, ascender=y-xhH-ascH, descender=y+descH;
+        // Descender (lightest)
+        ctx.setLineWidth(0.1); ctx.line(L,descender,R,descender);
+        // Ascender (light)
+        ctx.line(L,ascender,R,ascender);
+        // x-height (medium)
+        ctx.setLineWidth(0.18); ctx.line(L,xHeight,R,xHeight);
+        // Baseline (bold)
+        ctx.setLineWidth(0.3); ctx.line(L,baseline,R,baseline);
+        y+=totalH+rowGap;
+      }
+      // Slant lines
+      ctx.setLineWidth(0.08);
+      const slantStep=8;
+      const dxPerH=ch/Math.tan(slantRad);
+      for(let startX=L-dxPerH;startX<=R+1;startX+=slantStep){
+        const x1=startX, y1=B;
+        const x2=startX+dxPerH, y2=T;
+        // Clip
+        const clipX1=Math.max(L,Math.min(x1,x2));
+        const clipX2=Math.min(R,Math.max(x1,x2));
+        if(clipX1<clipX2){
+          const frac1=(clipX1-x1)/(x2-x1||1);
+          const frac2=(clipX2-x1)/(x2-x1||1);
+          ctx.line(clipX1,y1+(y2-y1)*frac1, clipX2,y1+(y2-y1)*frac2);
+        }
+      }
+      break;
+    }
+
+    /* ─── HANDWRITING ─── */
+    case 'handwriting':{
+      const setH=parseFloat(opts.hwHeight)||15;
+      const gap=5;
+      const style=opts.hwStyle||'zaner';
+      let y=T+setH;
+      while(y<=B+1){
+        if(style==='zaner'){
+          // 4 lines: descender, baseline, midline, headline
+          ctx.setLineWidth(0.1); ctx.setDash([1.5,1.5]);
+          ctx.line(L,y-setH,R,y-setH); // top/headline
+          ctx.setLineWidth(0.18); ctx.setDash([2,1.5]);
+          ctx.line(L,y-setH/2,R,y-setH/2); // midline (dashed)
+          ctx.setDash([]);
+          ctx.setLineWidth(0.3); ctx.line(L,y,R,y); // baseline
+          ctx.setLineWidth(0.1); ctx.line(L,y+setH*0.35,R,y+setH*0.35); // descender
+          y+=setH+gap;
+        } else if(style==='dotted'){
+          ctx.setLineWidth(0.3); ctx.line(L,y,R,y);
+          ctx.setLineWidth(0.1); ctx.setDash([1,2]);
+          ctx.line(L,y-setH/2,R,y-setH/2); // dotted mid
+          ctx.setDash([]);
+          y+=setH+gap;
+        } else { // simple
+          ctx.setLineWidth(0.3); ctx.line(L,y,R,y);
+          ctx.setLineWidth(0.15); ctx.line(L,y-setH/2,R,y-setH/2);
+          y+=setH+gap;
+        }
+      }
+      break;
+    }
+
+    /* ─── MUSIC STAFF ─── */
+    case 'musicStaff':{
+      const n=parseInt(opts.staves)||8;
+      const ls=1.5; // line spacing (mm)
+      const staffH=4*ls;
+      const totalStaffH=n*staffH;
+      const gap=(ch-totalStaffH)/(n+1);
+      ctx.setLineWidth(0.22);
+      for(let s=0;s<n;s++){
+        const st=T+gap+s*(staffH+gap);
+        for(let l=0;l<5;l++) ctx.line(L,st+l*ls,R,st+l*ls);
+        // Bar lines at margins
+        ctx.setLineWidth(0.3);
+        ctx.line(L,st,L,st+4*ls);
+        ctx.line(R,st,R,st+4*ls);
+        ctx.setLineWidth(0.22);
+      }
+      break;
+    }
+
+    /* ─── GRAND STAFF ─── */
+    case 'grandStaff':{
+      const n=parseInt(opts.systems)||4;
+      const ls=1.5;
+      const staffH=4*ls, braceGap=5;
+      const sysH=staffH*2+braceGap;
+      const gap=(ch-n*sysH)/(n+1);
+      ctx.setLineWidth(0.22);
+      for(let s=0;s<n;s++){
+        const sy=T+gap+s*(sysH+gap);
+        const by=sy+staffH+braceGap;
+        // Treble
+        for(let l=0;l<5;l++) ctx.line(L,sy+l*ls,R,sy+l*ls);
+        // Bass
+        for(let l=0;l<5;l++) ctx.line(L,by+l*ls,R,by+l*ls);
+        // Connecting bar lines
+        ctx.setLineWidth(0.35);
+        ctx.line(L,sy,L,by+4*ls);
+        ctx.line(R,sy,R,by+4*ls);
+        ctx.setLineWidth(0.22);
+        // Clef labels
+        ctx.setColor(180,170,200);
+        ctx.text('𝄞',L-0.5,sy+4*ls+1,7); // treble hint
+        ctx.text('𝄢',L-0.5,by+3*ls,7);   // bass hint
+        ctx.setColor(...lc);
+      }
+      break;
+    }
+
+    /* ─── GUITAR TAB ─── */
+    case 'guitarTab':{
+      const n=parseInt(opts.systems)||4;
+      const ws=opts.withStaff==='yes';
+      const tls=3.2; // tab line spacing
+      const tabH=5*tls;
+      const stH=ws?(4*1.5+6):0;
+      const sysH=stH+tabH;
+      const gap=(ch-n*sysH)/(n+1);
+      ctx.setLineWidth(0.2);
+      for(let s=0;s<n;s++){
+        const sy=T+gap+s*(sysH+gap);
+        const ty=sy+stH;
+        if(ws){
+          ctx.setLineWidth(0.18);
+          for(let l=0;l<5;l++) ctx.line(L+12,sy+l*1.5,R,sy+l*1.5);
+          ctx.setLineWidth(0.28);
+          ctx.line(L+12,sy,L+12,sy+4*1.5);
+          ctx.line(R,sy,R,sy+4*1.5);
+        }
+        // TAB text
+        ctx.setColor(...lc);
+        ctx.text('T',L+0.5,ty+tls*0.8,4.5);
+        ctx.text('A',L+0.5,ty+tls*1.8,4.5);
+        ctx.text('B',L+0.5,ty+tls*2.8,4.5);
+        // 6 string lines
+        ctx.setLineWidth(0.18);
+        for(let l=0;l<6;l++) ctx.line(L+11,ty+l*tls,R,ty+l*tls);
+        // Bar lines
+        ctx.setLineWidth(0.32);
+        ctx.line(L+11,ty,L+11,ty+5*tls);
+        ctx.line(R,ty,R,ty+5*tls);
+        ctx.setLineWidth(0.2);
+      }
+      break;
+    }
+
+    /* ─── BASS TAB ─── */
+    case 'bassTab':{
+      const n=parseInt(opts.systems)||5;
+      const tls=3.8;
+      const tabH=3*tls;
+      const gap=(ch-n*tabH)/(n+1);
+      ctx.setLineWidth(0.2);
+      for(let s=0;s<n;s++){
+        const ty=T+gap+s*(tabH+gap);
+        ctx.text('T',L+0.5,ty+tls*0.5,4.5);
+        ctx.text('A',L+0.5,ty+tls*1.2,4.5);
+        ctx.text('B',L+0.5,ty+tls*1.9,4.5);
+        ctx.setLineWidth(0.18);
+        for(let l=0;l<4;l++) ctx.line(L+11,ty+l*tls,R,ty+l*tls);
+        ctx.setLineWidth(0.32);
+        ctx.line(L+11,ty,L+11,ty+3*tls);
+        ctx.line(R,ty,R,ty+3*tls);
+      }
+      break;
+    }
+
+    /* ─── UKULELE TAB ─── */
+    case 'ukuleleTab':{
+      const n=parseInt(opts.systems)||5;
+      const tls=3.8;
+      const tabH=3*tls;
+      const gap=(ch-n*tabH)/(n+1);
+      ctx.setLineWidth(0.2);
+      for(let s=0;s<n;s++){
+        const ty=T+gap+s*(tabH+gap);
+        ctx.text('U',L+0.5,ty+tls*0.3,4);
+        ctx.text('K',L+0.5,ty+tls*0.9,4);
+        ctx.text('E',L+0.5,ty+tls*1.5,4);
+        ctx.setLineWidth(0.18);
+        for(let l=0;l<4;l++) ctx.line(L+11,ty+l*tls,R,ty+l*tls);
+        ctx.setLineWidth(0.32);
+        ctx.line(L+11,ty,L+11,ty+3*tls);
+        ctx.line(R,ty,R,ty+3*tls);
+      }
+      break;
+    }
+  }
+}
+
+/* ═══════════════════════════════════════
+   STATE & PREVIEW
+═══════════════════════════════════════ */
+let state = { type:'lined', previewPg:1, coverUrl:null };
+
+function totalPages(){
+  return parseInt(document.getElementById('pageCount').value||1) + (state.coverUrl?1:0); }
+
+function updatePreview(){
+  const [W,H]=getSize();
+  const canvas=document.getElementById('previewCanvas');
+  const maxW=Math.min(360, canvas.parentElement.clientWidth-40);
+  const sc=maxW/W;
+  canvas.width=Math.round(W*sc);
+  canvas.height=Math.round(H*sc);
+
+  const tp=totalPages();
+  state.previewPg=Math.max(1,Math.min(tp,state.previewPg));
+  document.getElementById('navInfo').textContent=`Page ${state.previewPg} of ${tp}`;
+
+  if(state.coverUrl && state.previewPg===1){
+    const img=new Image();
+    img.onload=()=>{
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+    };
+    img.src=state.coverUrl;
+    return;
+  }
+
+  const ctx=new CanvasCtx(canvas,W,H);
+  const M=MARGINS[document.getElementById('marginPreset').value]||MARGINS.kdp;
+  renderPage(ctx,state.type,W,H,M,getOpts());
+}
+
+function navPage(d){
+  state.previewPg=Math.max(1,Math.min(totalPages(),state.previewPg+d));
+  updatePreview(); }
+
+/* ═══════════════════════════════════════
+   UI SETUP
+═══════════════════════════════════════ */
+function buildGrid(){
+  const el=document.getElementById('ptGrid');
+  el.innerHTML=PAGE_TYPES.map(pt=>`
+    <button class="pt-btn${pt.id===state.type?' active':''}" onclick="selectType('${pt.id}')">
+      <span class="ico">${pt.ico}</span>${pt.label}
+    </button>`).join('');
+}
+
+function selectType(id){
+  state.type=id;
+  buildGrid();
+  document.getElementById('typeOpts').innerHTML=TYPE_OPTS_HTML[id]||'';
+  document.querySelectorAll('[data-opt]').forEach(el=>el.addEventListener('change',updatePreview));
+  updatePreview();
+}
+
+function clearCover(){
+  state.coverUrl=null;
+  document.getElementById('coverPreviewImg').style.display='none';
+  document.getElementById('coverPlaceholder').style.display='';
+  document.getElementById('coverActions').style.display='none';
+  document.getElementById('coverZone').classList.remove('has-cover');
+  document.getElementById('coverInput').value='';
+  state.previewPg=1;
+  updatePreview();
+}
+
+document.getElementById('coverInput').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    state.coverUrl=ev.target.result;
+    const img=document.getElementById('coverPreviewImg');
+    img.src=state.coverUrl; img.style.display='block';
+    document.getElementById('coverPlaceholder').style.display='none';
+    document.getElementById('coverActions').style.display='flex';
+    document.getElementById('coverZone').classList.add('has-cover');
+    state.previewPg=1;
+    updatePreview();
+  };
+  r.readAsDataURL(f);
+});
+
+// Drag-and-drop cover
+const cz=document.getElementById('coverZone');
+cz.addEventListener('dragover',e=>{e.preventDefault();cz.style.borderColor='var(--accent)'});
+cz.addEventListener('dragleave',()=>cz.style.borderColor='');
+cz.addEventListener('drop',e=>{
+  e.preventDefault(); cz.style.borderColor='';
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/')){
+    document.getElementById('coverInput').files=e.dataTransfer.files;
+    document.getElementById('coverInput').dispatchEvent(new Event('change'));
+  }
+});
+
+// Generic change listeners
+['bookSize','marginPreset','lineColor','bgColor','pageCount'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',updatePreview);
+  document.getElementById(id).addEventListener('change',updatePreview);
+});
+
+document.getElementById('bookSize').addEventListener('change',e=>{
+  document.getElementById('customSizeRow').classList.toggle('show',e.target.value==='custom');
+});
+['customW','customH'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',updatePreview);
+});
+
+/* ═══════════════════════════════════════
+   PDF EXPORT
+═══════════════════════════════════════ */
+async function exportPDF(){
+  const [W,H]=getSize();
+  const M=MARGINS[document.getElementById('marginPreset').value]||MARGINS.kdp;
+  const opts=getOpts();
+  const pages=parseInt(document.getElementById('pageCount').value)||1;
+  const exportBtn=document.getElementById('exportBtn');
+  const progressWrap=document.getElementById('progressWrap');
+  const progressFill=document.getElementById('progressFill');
+  const progressText=document.getElementById('progressText');
+
+  exportBtn.disabled=true;
+  progressWrap.style.display='flex';
+  progressText.textContent='Generating PDF…';
+  progressFill.style.width='0%';
+
+  await new Promise(r=>setTimeout(r,30)); // let UI update
+
+  const doc=new jsPDF({unit:'mm',format:[W,H],orientation:'portrait'});
+  const pctx=new PDFCtx(doc);
+  let pageNum=0;
+  const total=pages+(state.coverUrl?1:0);
+
+  // Cover
+  if(state.coverUrl){
+    pctx.fillBg(document.getElementById('bgColor').value);
+    try{ doc.addImage(state.coverUrl,'JPEG',0,0,W,H); }catch(e){}
+    pageNum++;
+    if(pageNum<total){ doc.addPage([W,H]); }
+  }
+
+  // Interior pages (yield every 5 to keep UI responsive)
+  const chunk=5;
+  for(let i=0;i<pages;i++){
+    renderPage(pctx,state.type,W,H,M,opts);
+    pageNum++;
+    if(i<pages-1) doc.addPage([W,H]);
+    if(i%chunk===chunk-1||i===pages-1){
+      const pct=Math.round((i+1)/pages*100);
+      progressFill.style.width=pct+'%';
+      progressText.textContent=`Generating PDF… ${pct}%`;
+      await new Promise(r=>setTimeout(r,0));
+    }
+  }
+
+  const sz=document.getElementById('bookSize').value;
+  const filename=`papermint_${state.type}_${pages}pages_${sz}.pdf`;
+  doc.save(filename);
+
+  progressWrap.style.display='none';
+  exportBtn.disabled=false;
+}
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+buildGrid();
+selectType('lined');
+</script>
+</body>
+</html>
